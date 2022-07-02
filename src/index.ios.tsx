@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import Native, {
   EventEmitter,
   HKCategorySampleRaw,
@@ -23,6 +23,7 @@ import type {
   GetMostRecentWorkoutFn,
   GetPreferredUnitFn,
   GetPreferredUnitsFn,
+  GetWorkoutRoutesFn,
   HKCategorySample,
   HKCorrelation,
   HKQuantitySample,
@@ -291,16 +292,14 @@ const queryStatisticsForQuantity: QueryStatisticsForQuantityFn = async (
 ) => {
   const actualUnit = await ensureUnit(identifier, unit);
   const toDate = to || new Date();
-  const {
-    mostRecentQuantityDateInterval,
-    ...rawResponse
-  } = await Native.queryStatisticsForQuantity(
-    identifier,
-    actualUnit,
-    from.toISOString(),
-    toDate.toISOString(),
-    options
-  );
+  const { mostRecentQuantityDateInterval, ...rawResponse } =
+    await Native.queryStatisticsForQuantity(
+      identifier,
+      actualUnit,
+      from.toISOString(),
+      toDate.toISOString(),
+      options
+    );
 
   const response = {
     ...rawResponse,
@@ -531,6 +530,10 @@ const saveWorkoutSample: SaveWorkoutSampleFn = (
   );
 };
 
+const getWorkoutRoutes: GetWorkoutRoutesFn = (workoutUUID: string) => {
+  return Native.getWorkoutRoutes(workoutUUID);
+};
+
 const Healthkit: ReactNativeHealthkit = {
   authorizationStatusFor: Native.authorizationStatusFor,
 
@@ -556,6 +559,8 @@ const Healthkit: ReactNativeHealthkit = {
   getPreferredUnit,
   getPreferredUnits,
   getRequestStatusForAuthorization,
+
+  getWorkoutRoutes,
 
   // query methods
   queryCategorySamples,
@@ -584,7 +589,7 @@ const Healthkit: ReactNativeHealthkit = {
   useSubscribeToChanges,
 };
 
-export * from './types';
 export * from './native-types';
+export * from './types';
 
 export default Healthkit;

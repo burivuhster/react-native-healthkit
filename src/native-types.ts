@@ -1,7 +1,7 @@
 import {
-  NativeModules,
-  NativeEventEmitter,
   EmitterSubscription,
+  NativeEventEmitter,
+  NativeModules,
 } from 'react-native';
 
 export type HKWorkoutTypeIdentifier = 'HKWorkoutTypeIdentifier';
@@ -279,6 +279,15 @@ export enum HKQuantityTypeIdentifier {
   dietaryCaffeine = 'HKQuantityTypeIdentifierDietaryCaffeine', // Mass, Cumulative
   dietaryWater = 'HKQuantityTypeIdentifierDietaryWater', // Volume, Cumulative
 
+  // Mobility
+  sixMinuteWalkTestDistance = 'HKQuantityTypeIdentifierSixMinuteWalkTestDistance',
+  walkingSpeed = 'HKQuantityTypeIdentifierWalkingSpeed',
+  walkingStepLength = 'HKQuantityTypeIdentifierWalkingStepLength',
+  walkingAsymmetryPercentage = 'HKQuantityTypeIdentifierWalkingAsymmetryPercentage',
+  walkingDoubleSupportPercentage = 'HKQuantityTypeIdentifierWalkingDoubleSupportPercentage',
+  stairAscentSpeed = 'HKQuantityTypeIdentifierStairAscentSpeed',
+  stairDescentSpeed = 'HKQuantityTypeIdentifierStairDescentSpeed',
+
   uvExposure = 'HKQuantityTypeIdentifierUvExposure', // Scalar (Count), Discrete
 }
 
@@ -286,6 +295,12 @@ export enum HKAuthorizationRequestStatus {
   unknown = 0,
   shouldRequest = 1,
   unnecessary = 2,
+}
+
+export enum HKAuthorizationStatus {
+  notDetermined = 0,
+  sharingDenied = 1,
+  sharingAuthorized = 2,
 }
 
 export type HKQuantity<T extends HKUnit = HKUnit> = {
@@ -436,27 +451,26 @@ export type MetadataMapperForCorrelationIdentifier<
     }
   : HKGenericMetadata;
 
-export type HKCategoryValueForIdentifier<
-  T extends HKCategoryTypeIdentifier
-> = T extends HKCategoryTypeIdentifier.cervicalMucusQuality
-  ? HKCategoryValueCervicalMucusQuality
-  : T extends HKCategoryTypeIdentifier.menstrualFlow
-  ? HKCategoryValueMenstrualFlow
-  : T extends HKCategoryTypeIdentifier.ovulationTestResult
-  ? HKCategoryValueOvulationTestResult
-  : T extends HKCategoryTypeIdentifier.sleepAnalysis
-  ? HKCategoryValueSleepAnalysis
-  : T extends HKCategoryTypeIdentifier.mindfulSession
-  ? HKCategoryValueNotApplicable
-  : T extends HKCategoryTypeIdentifier.intermenstrualBleeding
-  ? HKCategoryValueNotApplicable
-  : T extends HKCategoryTypeIdentifier.highHeartRateEvent
-  ? HKCategoryValueNotApplicable
-  : T extends HKCategoryTypeIdentifier.sexualActivity
-  ? HKCategoryValueNotApplicable
-  : T extends HKCategoryTypeIdentifier.appleStandHour
-  ? HKCategoryValueAppleStandHour
-  : number;
+export type HKCategoryValueForIdentifier<T extends HKCategoryTypeIdentifier> =
+  T extends HKCategoryTypeIdentifier.cervicalMucusQuality
+    ? HKCategoryValueCervicalMucusQuality
+    : T extends HKCategoryTypeIdentifier.menstrualFlow
+    ? HKCategoryValueMenstrualFlow
+    : T extends HKCategoryTypeIdentifier.ovulationTestResult
+    ? HKCategoryValueOvulationTestResult
+    : T extends HKCategoryTypeIdentifier.sleepAnalysis
+    ? HKCategoryValueSleepAnalysis
+    : T extends HKCategoryTypeIdentifier.mindfulSession
+    ? HKCategoryValueNotApplicable
+    : T extends HKCategoryTypeIdentifier.intermenstrualBleeding
+    ? HKCategoryValueNotApplicable
+    : T extends HKCategoryTypeIdentifier.highHeartRateEvent
+    ? HKCategoryValueNotApplicable
+    : T extends HKCategoryTypeIdentifier.sexualActivity
+    ? HKCategoryValueNotApplicable
+    : T extends HKCategoryTypeIdentifier.appleStandHour
+    ? HKCategoryValueAppleStandHour
+    : number;
 
 export type MetadataMapperForCategoryIdentifier<
   T extends HKCategoryTypeIdentifier
@@ -559,6 +573,18 @@ export type HKDevice = {
   softwareVersion: string;
 };
 
+export type HKSource = {
+  name: string;
+  bundleIdentifier: string;
+};
+
+export type HKSourceRevision = {
+  source: HKSource;
+  version: string;
+  operatingSystemVersion?: string;
+  productType?: string;
+};
+
 export type HKQuantitySampleRaw<
   TQuantityIdentifier extends HKQuantityTypeIdentifier = HKQuantityTypeIdentifier,
   TUnit extends HKUnit = HKUnit
@@ -571,6 +597,7 @@ export type HKQuantitySampleRaw<
   quantity: number;
   unit: TUnit;
   metadata: MetadataMapperForQuantityIdentifier<TQuantityIdentifier>;
+  sourceRevision?: HKSourceRevision;
 };
 
 export type HKWorkoutRaw<TEnergy extends HKUnit, TDistance extends HKUnit> = {
@@ -583,6 +610,7 @@ export type HKWorkoutRaw<TEnergy extends HKUnit, TDistance extends HKUnit> = {
   startDate: string;
   endDate: string;
   metadata?: HKWorkoutMetadata;
+  sourceRevision?: HKSourceRevision;
 };
 
 // Straight mapping to https://developer.apple.com/documentation/healthkit/hkcharacteristictypeidentifier
@@ -618,17 +646,17 @@ export type HKCategorySampleRaw<
   endDate: string;
   value: HKCategoryValueForIdentifier<T>;
   metadata: MetadataMapperForCategoryIdentifier<T>;
+  sourceRevision?: HKSourceRevision;
 };
 
-export type HKCorrelationRaw<
-  TIdentifier extends HKCorrelationTypeIdentifier
-> = {
-  correlationType: HKCorrelationTypeIdentifier;
-  objects: (HKQuantitySampleRaw | HKCategorySampleRaw)[];
-  metadata: MetadataMapperForCorrelationIdentifier<TIdentifier>;
-  startDate: string;
-  endDate: string;
-};
+export type HKCorrelationRaw<TIdentifier extends HKCorrelationTypeIdentifier> =
+  {
+    correlationType: HKCorrelationTypeIdentifier;
+    objects: (HKQuantitySampleRaw | HKCategorySampleRaw)[];
+    metadata: MetadataMapperForCorrelationIdentifier<TIdentifier>;
+    startDate: string;
+    endDate: string;
+  };
 
 type QueryId = string;
 
@@ -643,6 +671,23 @@ export enum HKUpdateFrequency {
   daily = 3,
   weekly = 4,
 }
+
+export type WorkoutLocation = {
+  longitude: number;
+  latitude: number;
+  altitude: number;
+  speed: number;
+  timestamp: number;
+  horizontalAccuracy: number;
+  speedAccuracy: number;
+  verticalAccuracy: number;
+};
+
+export type WorkoutRoute = {
+  locations: WorkoutLocation[];
+  HKMetadataKeySyncIdentifier?: string;
+  HKMetadataKeySyncVersion?: number;
+};
 
 type ReactNativeHealthkitTypeNative = {
   isHealthDataAvailable(): Promise<boolean>;
@@ -755,9 +800,11 @@ type ReactNativeHealthkitTypeNative = {
   getPreferredUnits: (
     identifiers: HKQuantityTypeIdentifier[]
   ) => Promise<TypeToUnitMapping>;
+  getWorkoutRoutes: (workoutUUID: string) => Promise<WorkoutRoute[]>;
 };
 
-const Native = NativeModules.ReactNativeHealthkit as ReactNativeHealthkitTypeNative;
+const Native =
+  NativeModules.ReactNativeHealthkit as ReactNativeHealthkitTypeNative;
 
 type OnChangeCallback = ({
   typeIdentifier,
